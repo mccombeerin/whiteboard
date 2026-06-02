@@ -217,9 +217,9 @@ function buildPopup() {
       btnFree.style.background = 'rgba(255,255,255,0.07)'; btnFree.style.color = '#94a3b8';
       presetsSection.style.display = 'block';
       freeTextSection.style.display = 'none';
-      // Show colour picker again
-      const colourSection = $('colour-section');
-      if (colourSection) colourSection.style.display = 'block';
+      // Show top input and colour picker
+      const bi = $('block-input'); if (bi) bi.style.display = 'block';
+      const cs = $('colour-section'); if (cs) cs.style.display = 'block';
     });
 
     btnFree.addEventListener('click', () => {
@@ -228,9 +228,9 @@ function buildPopup() {
       btnLetters.style.background = 'rgba(255,255,255,0.07)'; btnLetters.style.color = '#94a3b8';
       presetsSection.style.display = 'none';
       freeTextSection.style.display = 'block';
-      // Hide colour picker — plain text has no colour
-      const colourSection = $('colour-section');
-      if (colourSection) colourSection.style.display = 'none';
+      // Hide top input and colour picker
+      const bi = $('block-input'); if (bi) bi.style.display = 'none';
+      const cs = $('colour-section'); if (cs) cs.style.display = 'none';
       setTimeout(() => $('free-text-input').focus(), 50);
     });
   }
@@ -345,19 +345,20 @@ function renderBlock(data) {
   el.style.top  = data.y + 'px';
 
   if (data.color === 'none') {
-    // Plain text — no coloured tile
-    el.className = 'text-block text-plain';
+    // Plain text — transparent background, no box, fully draggable
+    el.className = 'text-block';
     el.style.background = 'transparent';
-    el.style.border = 'none';
+    el.style.border = '2px dashed rgba(0,0,0,0.15)'; // subtle dashed outline so tutor can see/grab it
     el.style.boxShadow = 'none';
     el.style.color = '#1a202c';
     el.style.fontSize = '18px';
     el.style.fontWeight = '700';
-    el.style.padding = '4px 8px';
+    el.style.padding = '6px 10px';
     el.style.minWidth = 'unset';
     el.style.height = 'auto';
     el.style.whiteSpace = 'pre-wrap';
     el.style.maxWidth = '280px';
+    el.style.lineHeight = '1.4';
   } else {
     el.className = 'text-block';
     el.style.background = data.color;
