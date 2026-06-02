@@ -154,6 +154,7 @@
       cursor: grab;
       transition: background 0.2s, border-color 0.2s;
       user-select: none;
+      z-index: 5; /* below text blocks so blocks are always grabbable */
     }
     .drop-zone:active { cursor: grabbing; }
     .drop-zone.highlight {
@@ -201,7 +202,7 @@
       user-select: none;
       transition: box-shadow 0.15s, transform 0.1s;
       border: 2.5px solid rgba(0,0,0,0.1);
-      /* No resize, no rotate — enforced by no handles and no transform controls */
+      z-index: 10; /* always above drop zones so pointer events reach the block */
     }
     .text-block:active { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: scale(1.04); }
     .text-block.snapped { box-shadow: 0 2px 10px rgba(124,58,237,0.3); }
@@ -391,8 +392,10 @@
     <textarea id="free-text-input" rows="3" placeholder="Type your text here…" style="width:100%;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:600;padding:10px 12px;outline:none;resize:none;margin-top:4px;"></textarea>
   </div>
 
-  <div class="chip-section-label" style="margin-top:2px;">Colour</div>
-  <div class="swatch-row" id="swatch-row"></div>
+  <div id="colour-section">
+    <div class="chip-section-label" style="margin-top:2px;">Colour</div>
+    <div class="swatch-row" id="swatch-row"></div>
+  </div>
 
   <div class="pop-actions">
     <button class="pop-btn cancel" id="popup-cancel">Cancel</button>

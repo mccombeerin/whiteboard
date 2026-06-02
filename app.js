@@ -182,47 +182,58 @@ function makeDivider() {
    POPUP
 ═══════════════════════════════════════════ */
 
+let freeTextMode = false; // module-level so confirmAddBlock can read it
+
 function buildPopup() {
-  // Tab toggle
-  let freeTextMode = false;
-  const tabRow = document.createElement('div');
-  tabRow.style.cssText = 'display:flex;gap:6px;';
-
-  const btnLetters = document.createElement('button');
-  btnLetters.textContent = 'Letters / Words';
-  btnLetters.style.cssText = 'flex:1;padding:7px;border-radius:7px;border:none;font-family:Nunito,sans-serif;font-size:12px;font-weight:800;cursor:pointer;background:#3b82f6;color:#fff;';
-
-  const btnFree = document.createElement('button');
-  btnFree.textContent = 'Free Text';
-  btnFree.style.cssText = 'flex:1;padding:7px;border-radius:7px;border:none;font-family:Nunito,sans-serif;font-size:12px;font-weight:800;cursor:pointer;background:rgba(255,255,255,0.07);color:#94a3b8;';
-
-  tabRow.appendChild(btnLetters);
-  tabRow.appendChild(btnFree);
-
-  const popup = $('block-popup');
-  // Insert tab row after the title
-  const title = popup.querySelector('.pop-title');
-  title.after(tabRow);
-
   const presetsSection  = $('presets-section');
   const freeTextSection = $('free-text-section');
 
-  btnLetters.addEventListener('click', () => {
-    freeTextMode = false;
-    btnLetters.style.background = '#3b82f6'; btnLetters.style.color = '#fff';
-    btnFree.style.background = 'rgba(255,255,255,0.07)'; btnFree.style.color = '#94a3b8';
-    presetsSection.style.display = 'block';
-    freeTextSection.style.display = 'none';
-  });
+  // Build tab row once
+  if (!$('popup-tab-row')) {
+    const tabRow = document.createElement('div');
+    tabRow.id = 'popup-tab-row';
+    tabRow.style.cssText = 'display:flex;gap:6px;';
 
-  btnFree.addEventListener('click', () => {
-    freeTextMode = true;
-    btnFree.style.background = '#3b82f6'; btnFree.style.color = '#fff';
-    btnLetters.style.background = 'rgba(255,255,255,0.07)'; btnLetters.style.color = '#94a3b8';
-    presetsSection.style.display = 'none';
-    freeTextSection.style.display = 'block';
-    setTimeout(() => $('free-text-input').focus(), 50);
-  });
+    const btnLetters = document.createElement('button');
+    btnLetters.id = 'popup-tab-letters';
+    btnLetters.textContent = 'Letters / Words';
+    btnLetters.style.cssText = 'flex:1;padding:7px;border-radius:7px;border:none;font-family:Nunito,sans-serif;font-size:12px;font-weight:800;cursor:pointer;background:#3b82f6;color:#fff;';
+
+    const btnFree = document.createElement('button');
+    btnFree.id = 'popup-tab-free';
+    btnFree.textContent = 'Free Text';
+    btnFree.style.cssText = 'flex:1;padding:7px;border-radius:7px;border:none;font-family:Nunito,sans-serif;font-size:12px;font-weight:800;cursor:pointer;background:rgba(255,255,255,0.07);color:#94a3b8;';
+
+    tabRow.appendChild(btnLetters);
+    tabRow.appendChild(btnFree);
+
+    const popup = $('block-popup');
+    const title = popup.querySelector('.pop-title');
+    title.after(tabRow);
+
+    btnLetters.addEventListener('click', () => {
+      freeTextMode = false;
+      btnLetters.style.background = '#3b82f6'; btnLetters.style.color = '#fff';
+      btnFree.style.background = 'rgba(255,255,255,0.07)'; btnFree.style.color = '#94a3b8';
+      presetsSection.style.display = 'block';
+      freeTextSection.style.display = 'none';
+      // Show colour picker again
+      const colourSection = $('colour-section');
+      if (colourSection) colourSection.style.display = 'block';
+    });
+
+    btnFree.addEventListener('click', () => {
+      freeTextMode = true;
+      btnFree.style.background = '#3b82f6'; btnFree.style.color = '#fff';
+      btnLetters.style.background = 'rgba(255,255,255,0.07)'; btnLetters.style.color = '#94a3b8';
+      presetsSection.style.display = 'none';
+      freeTextSection.style.display = 'block';
+      // Hide colour picker — plain text has no colour
+      const colourSection = $('colour-section');
+      if (colourSection) colourSection.style.display = 'none';
+      setTimeout(() => $('free-text-input').focus(), 50);
+    });
+  }
 
   // Letter chips
   const chipLetters = $('chip-letters');
@@ -267,10 +278,10 @@ function buildPopup() {
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   });
 
-  $('popup-confirm').addEventListener('click', () => confirmAddBlock(freeTextMode));
+  $('popup-confirm').addEventListener('click', () => confirmAddBlock());
   $('popup-cancel').addEventListener('click', () => togglePopup(false));
-  $('block-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmAddBlock(freeTextMode); });
-  $('free-text-input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmAddBlock(true); } });
+  $('block-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmAddBlock(); });
+  $('free-text-input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmAddBlock(); } });
 }
 
 function makeChip(text, onClick) {
@@ -296,16 +307,19 @@ function togglePopup(open) {
   }
 }
 
-function confirmAddBlock(freeTextMode) {
+function confirmAddBlock() {
   let text = '';
   if (freeTextMode) {
     text = ($('free-text-input').value || '').trim();
+    if (!text) { showToast('Please enter some text'); return; }
+    togglePopup(false);
+    addBlock(text, 'none'); // 'none' = plain text, no colour block
   } else {
     text = (popupText || $('block-input').value || '').trim().toUpperCase();
+    if (!text) { showToast('Please enter some text'); return; }
+    togglePopup(false);
+    addBlock(text, selectedColor);
   }
-  if (!text) { showToast('Please enter some text'); return; }
-  togglePopup(false);
-  addBlock(text, selectedColor);
 }
 
 /* ═══════════════════════════════════════════
@@ -326,12 +340,29 @@ function addBlock(text, color, id = null, x = null, y = null) {
 function renderBlock(data) {
   document.getElementById(data.id)?.remove();
   const el = document.createElement('div');
-  el.className = 'text-block';
   el.id = data.id;
-  el.textContent = data.text;
-  el.style.background = data.color;
   el.style.left = data.x + 'px';
   el.style.top  = data.y + 'px';
+
+  if (data.color === 'none') {
+    // Plain text — no coloured tile
+    el.className = 'text-block text-plain';
+    el.style.background = 'transparent';
+    el.style.border = 'none';
+    el.style.boxShadow = 'none';
+    el.style.color = '#1a202c';
+    el.style.fontSize = '18px';
+    el.style.fontWeight = '700';
+    el.style.padding = '4px 8px';
+    el.style.minWidth = 'unset';
+    el.style.height = 'auto';
+    el.style.whiteSpace = 'pre-wrap';
+    el.style.maxWidth = '280px';
+  } else {
+    el.className = 'text-block';
+    el.style.background = data.color;
+  }
+  el.textContent = data.text;
 
   const rm = document.createElement('div');
   rm.className = 'blk-remove';
