@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TutorBlocks</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Architects+Daughter&display=swap" rel="stylesheet"/>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --white:       #ffffff;
+      --canvas-bg:   #f8f9fb;
+      --grid-color:  #e8ecf2;
+      --border:      #dde3ed;
+      --toolbar-bg:  #1e2533;
+      --toolbar-2:   #252d3d;
+      --text:        #1a202c;
+      --muted:       #64748b;
+      --tutor:       #3b82f6;
+      --tutor-dark:  #2563eb;
+      --danger:      #ef4444;
+      --success:     #22c55e;
+      --snap-color:  #a78bfa;
+      --snap-fill:   rgba(167,139,250,0.08);
+      --snapped:     rgba(167,139,250,0.18);
+      --shadow-block: 0 4px 14px rgba(0,0,0,0.13);
+      --radius:      10px;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Nunito', sans-serif;
+      background: var(--toolbar-bg);
+    }
+
+    /* ── ROLE SCREEN ── */
+    #role-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #1e2533 0%, #252d3d 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; z-index: 1000;
+    }
+    #role-screen h1 {
+      font-family: 'Architects Daughter', cursive;
+      font-size: 36px; color: #fff;
+      margin-bottom: 6px; letter-spacing: -0.5px;
+    }
+    #role-screen h1 span { color: #60a5fa; }
+    #role-screen p { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
+    .role-badge-row { display: flex; gap: 12px; }
+    .role-card {
+      background: rgba(255,255,255,0.06);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 22px 28px;
+      text-align: center;
+      color: #fff;
+      cursor: default;
+      min-width: 140px;
+    }
+    .role-card .icon { font-size: 36px; margin-bottom: 10px; }
+    .role-card .label { font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; }
+    .role-card .name { font-size: 18px; font-weight: 800; margin-top: 4px; }
+    #role-screen .status {
+      margin-top: 18px;
+      font-size: 13px; color: #60a5fa;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(96,165,250,0.3);
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── APP SHELL ── */
+    #app { display: none; flex-direction: column; height: 100vh; }
+
+    /* ── TOP BAR ── */
+    #topbar {
+      background: var(--toolbar-bg);
+      height: 44px;
+      display: flex; align-items: center;
+      padding: 0 16px; gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    #topbar .logo {
+      font-family: 'Architects Daughter', cursive;
+      font-size: 18px; color: #fff; letter-spacing: -0.3px;
+    }
+    #topbar .logo span { color: #60a5fa; }
+    #topbar .session-id {
+      font-size: 11px; color: #475569;
+      background: rgba(255,255,255,0.05);
+      padding: 3px 8px; border-radius: 20px;
+      font-weight: 600; letter-spacing: 0.3px;
+    }
+    #topbar .role-pill {
+      margin-left: auto;
+      font-size: 11px; font-weight: 800;
+      padding: 4px 12px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.6px;
+    }
+    .role-pill.tutor { background: var(--tutor); color: #fff; }
+    .role-pill.student { background: #334155; color: #94a3b8; }
+    #topbar .online-count {
+      font-size: 11px; color: #64748b;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .online-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%; background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+    }
+
+    /* ── CANVAS AREA ── */
+    #canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: var(--canvas-bg);
+      background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      background-size: 32px 32px;
+      cursor: default;
+    }
+    #canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+    }
+
+    /* ── DROP ZONES ── */
+    .drop-zone {
+      position: absolute;
+      width: 120px; height: 90px;
+      border: 2.5px dashed var(--snap-color);
+      border-radius: 12px;
+      background: var(--snap-fill);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--snap-color);
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      cursor: grab;
+      transition: background 0.2s, border-color 0.2s;
+      user-select: none;
+    }
+    .drop-zone:active { cursor: grabbing; }
+    .drop-zone.highlight {
+      background: var(--snapped);
+      border-color: #7c3aed;
+    }
+    .drop-zone .dz-label { pointer-events: none; opacity: 0.7; }
+    .drop-zone .dz-remove {
+      position: absolute; top: -8px; right: -8px;
+      width: 20px; height: 20px;
+      background: var(--danger); border-radius: 50%;
+      color: #fff; font-size: 12px; font-weight: 900;
+      display: none; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10;
+      line-height: 1;
+    }
+    .drop-zone:hover .dz-remove { display: flex; }
+    .drop-zone .dz-lock {
+      position: absolute; top: -8px; left: -8px;
+      background: #334155; border-radius: 6px;
+      color: #94a3b8; font-size: 9px; font-weight: 800;
+      display: none; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10; padding: 2px 5px;
+      white-space: nowrap;
+    }
+    .drop-zone:hover .dz-lock { display: flex; }
+    .drop-zone.dz-locked {
+      border-color: #f97316;
+      background: rgba(249,115,22,0.08);
+    }
+    .drop-zone.dz-locked .dz-lock { display: flex; background: #f97316; color: #fff; }
+
+    /* ── TEXT BLOCKS ── */
+    .text-block {
+      position: absolute;
+      min-width: 64px; height: 56px;
+      padding: 0 18px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Nunito', sans-serif;
+      font-size: 24px; font-weight: 900;
+      color: #fff;
+      box-shadow: var(--shadow-block);
+      cursor: grab;
+      user-select: none;
+      transition: box-shadow 0.15s, transform 0.1s;
+      border: 2.5px solid rgba(0,0,0,0.1);
+      /* No resize, no rotate — enforced by no handles and no transform controls */
+    }
+    .text-block:active { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: scale(1.04); }
+    .text-block.snapped { box-shadow: 0 2px 10px rgba(124,58,237,0.3); }
+
+    /* Tutor-only remove button on blocks */
+    .text-block .blk-remove {
+      position: absolute; top: -8px; right: -8px;
+      width: 20px; height: 20px;
+      background: var(--danger); border-radius: 50%;
+      color: #fff; font-size: 12px; font-weight: 900;
+      display: none; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10; line-height: 1;
+    }
+    .text-block:hover .blk-remove { display: flex; }
+
+    /* ── BOTTOM TOOLBAR ── */
+    #toolbar {
+      background: var(--toolbar-bg);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      height: 64px;
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 10px;
+      flex-shrink: 0;
+    }
+    .tb-btn {
+      height: 40px;
+      padding: 0 18px;
+      border-radius: 10px;
+      border: none;
+      font-family: 'Nunito', sans-serif;
+      font-size: 13px; font-weight: 800;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 7px;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .tb-btn:active { transform: scale(0.97); }
+    .tb-btn.primary { background: var(--tutor); color: #fff; }
+    .tb-btn.primary:hover { background: var(--tutor-dark); }
+    .tb-btn.secondary { background: rgba(167,139,250,0.15); color: #a78bfa; border: 1.5px solid rgba(167,139,250,0.3); }
+    .tb-btn.secondary:hover { background: rgba(167,139,250,0.25); }
+    .tb-btn.danger { background: rgba(239,68,68,0.12); color: #f87171; border: 1.5px solid rgba(239,68,68,0.25); }
+    .tb-btn.danger:hover { background: rgba(239,68,68,0.22); }
+    .tb-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.08); margin: 0 4px; }
+    .tb-hint { font-size: 12px; color: #475569; margin-left: auto; font-weight: 600; }
+
+    /* ── BLOCK INPUT POPUP ── */
+    #block-popup {
+      position: fixed;
+      bottom: 80px; left: 20px;
+      background: var(--toolbar-2);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 16px;
+      width: 280px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 200;
+    }
+    #block-popup.open { display: flex; }
+    #block-popup .pop-title {
+      font-size: 12px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.6px;
+      color: #64748b;
+    }
+    #block-popup input {
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Nunito', sans-serif;
+      font-size: 20px; font-weight: 800;
+      padding: 10px 14px;
+      outline: none;
+      width: 100%;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    #block-popup input:focus { border-color: var(--tutor); }
+    #block-popup input::placeholder { color: #334155; font-size: 14px; letter-spacing: 0; text-transform: none; }
+
+    /* Preset chips */
+    .chip-section-label {
+      font-size: 10px; font-weight: 700; color: #475569;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .chip-row {
+      display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .chip {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: #cbd5e1;
+      font-size: 12px; font-weight: 800;
+      padding: 4px 9px;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .chip:hover, .chip.active { background: var(--tutor); border-color: var(--tutor); color: #fff; }
+
+    /* Color swatches in popup */
+    .swatch-row { display: flex; gap: 7px; }
+    .swatch {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.12s;
+    }
+    .swatch:hover { transform: scale(1.15); }
+    .swatch.active { border-color: #fff; transform: scale(1.15); }
+
+    .pop-actions { display: flex; gap: 8px; }
+    .pop-btn {
+      flex: 1; height: 38px;
+      border-radius: 8px; border: none;
+      font-family: 'Nunito', sans-serif;
+      font-size: 13px; font-weight: 800;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .pop-btn.confirm { background: var(--tutor); color: #fff; }
+    .pop-btn.confirm:hover { background: var(--tutor-dark); }
+    .pop-btn.cancel { background: rgba(255,255,255,0.07); color: #64748b; }
+    .pop-btn.cancel:hover { background: rgba(255,255,255,0.12); }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 80px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e2533;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff; padding: 10px 20px;
+      border-radius: 30px; font-size: 13px; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      white-space: nowrap; z-index: 500;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- role screen removed -->
+
+<!-- ── MAIN APP ── -->
+<div id="app" style="display:flex;">
+
+  <!-- Top bar -->
+  <div id="topbar">
+    <div class="logo">Tutor<span>Blocks</span></div>
+    <div class="session-id" id="session-id-label"></div>
+    <div class="online-count"><div class="online-dot"></div><span id="online-count">1 online</span></div>
+    <div class="role-pill" id="role-pill">…</div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas-wrap">
+    <div id="canvas"></div>
+  </div>
+
+  <!-- Bottom toolbar -->
+  <div id="toolbar">
+    <!-- Tutor-only buttons injected by JS -->
+    <span class="tb-hint" id="tb-hint"></span>
+  </div>
+
+</div>
+
+<!-- Block creation popup -->
+<div id="block-popup">
+  <div class="pop-title">New Text Block</div>
+  <input type="text" id="block-input" maxlength="10" placeholder="Type a letter or word…"/>
+
+  <div id="presets-section">
+    <div class="chip-section-label">Letters</div>
+    <div class="chip-row" id="chip-letters"></div>
+    <div class="chip-section-label" style="margin-top:2px;">Words</div>
+    <div class="chip-row" id="chip-words"></div>
+  </div>
+
+  <div id="free-text-section" style="display:none;">
+    <div class="chip-section-label">Type anything</div>
+    <textarea id="free-text-input" rows="3" placeholder="Type your text here…" style="width:100%;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:600;padding:10px 12px;outline:none;resize:none;margin-top:4px;"></textarea>
+  </div>
+
+  <div class="chip-section-label" style="margin-top:2px;">Colour</div>
+  <div class="swatch-row" id="swatch-row"></div>
+
+  <div class="pop-actions">
+    <button class="pop-btn cancel" id="popup-cancel">Cancel</button>
+    <button class="pop-btn confirm" id="popup-confirm">Add Block</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+  <!-- Zoom Apps SDK - works inside Zoom client, ignored gracefully in browser -->
+  <script src="https://appssdk.zoom.us/sdk.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
