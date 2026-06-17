@@ -217,8 +217,7 @@ function buildPopup() {
       btnFree.style.background = 'rgba(255,255,255,0.07)'; btnFree.style.color = '#94a3b8';
       presetsSection.style.display = 'block';
       freeTextSection.style.display = 'none';
-      // Show top input and colour picker
-      const bi = $('block-input'); if (bi) bi.style.display = 'block';
+      // Show colour picker
       const cs = $('colour-section'); if (cs) cs.style.display = 'block';
     });
 
@@ -228,8 +227,7 @@ function buildPopup() {
       btnLetters.style.background = 'rgba(255,255,255,0.07)'; btnLetters.style.color = '#94a3b8';
       presetsSection.style.display = 'none';
       freeTextSection.style.display = 'block';
-      // Hide top input and colour picker
-      const bi = $('block-input'); if (bi) bi.style.display = 'none';
+      // Hide colour picker
       const cs = $('colour-section'); if (cs) cs.style.display = 'none';
       setTimeout(() => $('free-text-input').focus(), 50);
     });
@@ -345,20 +343,24 @@ function renderBlock(data) {
   el.style.top  = data.y + 'px';
 
   if (data.color === 'none') {
-    // Plain text — transparent background, no box, fully draggable
-    el.className = 'text-block';
+    // Plain text — transparent, resizable, draggable
+    el.className = 'text-block text-plain';
     el.style.background = 'transparent';
-    el.style.border = '2px dashed rgba(0,0,0,0.15)'; // subtle dashed outline so tutor can see/grab it
+    el.style.border = '2px dashed rgba(0,0,0,0.18)';
     el.style.boxShadow = 'none';
     el.style.color = '#1a202c';
     el.style.fontSize = '18px';
     el.style.fontWeight = '700';
     el.style.padding = '6px 10px';
-    el.style.minWidth = 'unset';
-    el.style.height = 'auto';
+    el.style.minWidth = '60px';
+    el.style.minHeight = '30px';
+    el.style.width = data.w ? data.w + 'px' : 'auto';
+    el.style.height = data.h ? data.h + 'px' : 'auto';
     el.style.whiteSpace = 'pre-wrap';
-    el.style.maxWidth = '280px';
+    el.style.maxWidth = '400px';
     el.style.lineHeight = '1.4';
+    el.style.overflow = 'hidden';
+    el.style.resize = 'both'; // browser native resize handle
   } else {
     el.className = 'text-block';
     el.style.background = data.color;
