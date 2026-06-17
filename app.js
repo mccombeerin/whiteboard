@@ -150,6 +150,14 @@ function buildToolbar() {
 
   tb.appendChild(makeDivider());
 
+  // Save Layout
+  tb.appendChild(makeBtn('Save Layout', 'secondary', () => openSaveLayoutModal()));
+
+  // My Layouts
+  tb.appendChild(makeBtn('My Layouts', 'secondary', () => openLoadLayoutModal()));
+
+  tb.appendChild(makeDivider());
+
   // Clear All
   tb.appendChild(makeBtn('Clear All', 'danger', () => {
     if (confirm('Remove all blocks and drop zones?')) clearAll();
@@ -613,4 +621,224 @@ function handleRemoteUpdate(payload) {
       Object.keys(dropZones).forEach(id => { document.getElementById(id)?.remove(); delete dropZones[id]; });
       break;
   }
+}
+
+/* ═══════════════════════════════════════════
+   SAVED LAYOUTS (templates) — stored in Supabase table "layouts"
+   Table columns expected: id (uuid, default), name (text), data (jsonb), created_at (timestamptz default now())
+═══════════════════════════════════════════ */
+
+function snapshotCanvas() {
+  return {
+    blocks: Object.values(blocks).filter(b => b),
+    dropZones: Object.values(dropZones).filter(z => z),
+  };
+}
+
+async function saveLayout(name) {
+  if (!supabaseClient) { showToast('Not connected to database'); return; }
+  const snapshot = snapshotCanvas();
+  try {
+    const { error } = await supabaseClient
+      .from('layouts')
+      .insert({ name, data: snapshot });
+    if (error) throw error;
+    showToast('Layout "' + name + '" saved!');
+  } catch (err) {
+    console.error('[TutorBlocks] saveLayout error:', err);
+    showToast('Could not save layout — check console');
+  }
+}
+
+async function fetchLayouts() {
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient
+      .from('layouts')
+      .select('id, name, created_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('[TutorBlocks] fetchLayouts error:', err);
+    return [];
+  }
+}
+
+async function loadLayoutById(id) {
+  if (!supabaseClient) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from('layouts')
+      .select('data')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+
+    // Clear current board first
+    clearAll();
+
+    // Small delay so clear_all broadcast lands before we add new objects
+    setTimeout(() => {
+      (data.data.dropZones || []).forEach(z => {
+        addDropZone(null, z.x, z.y, z.locked || false);
+      });
+      (data.data.blocks || []).forEach(b => {
+        addBlock(b.text, b.color, null, b.x, b.y);
+        // Restore snap relationship after a tick so drop zones exist
+      });
+      showToast('Layout loaded!');
+    }, 150);
+
+  } catch (err) {
+    console.error('[TutorBlocks] loadLayoutById error:', err);
+    showToast('Could not load layout');
+  }
+}
+
+async function deleteLayoutById(id) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('layouts').delete().eq('id', id);
+    if (error) throw error;
+    showToast('Layout deleted');
+  } catch (err) {
+    console.error('[TutorBlocks] deleteLayoutById error:', err);
+    showToast('Could not delete layout');
+  }
+}
+
+/* ── Save Layout Modal ── */
+
+function openSaveLayoutModal() {
+  const existing = document.getElementById('save-layout-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'save-layout-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#252d3d;border-radius:14px;padding:22px;width:300px;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);';
+
+  const title = document.createElement('div');
+  title.textContent = 'Save Current Layout';
+  title.style.cssText = 'font-size:14px;font-weight:800;color:#fff;';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'e.g. Sight Words Game';
+  input.maxLength = 40;
+  input.style.cssText = 'background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:600;padding:10px 12px;outline:none;';
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'flex:1;height:38px;border-radius:8px;border:none;background:rgba(255,255,255,0.07);color:#64748b;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer;';
+  cancelBtn.addEventListener('click', () => overlay.remove());
+
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.style.cssText = 'flex:1;height:38px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer;';
+  saveBtn.addEventListener('click', async () => {
+    const name = input.value.trim();
+    if (!name) { showToast('Please enter a name'); return; }
+    overlay.remove();
+    await saveLayout(name);
+  });
+
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') saveBtn.click(); });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  box.appendChild(title);
+  box.appendChild(input);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  setTimeout(() => input.focus(), 50);
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+/* ── Load Layout Modal ── */
+
+async function openLoadLayoutModal() {
+  const existing = document.getElementById('load-layout-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'load-layout-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#252d3d;border-radius:14px;padding:22px;width:340px;max-height:70vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);';
+
+  const title = document.createElement('div');
+  title.textContent = 'My Saved Layouts';
+  title.style.cssText = 'font-size:14px;font-weight:800;color:#fff;';
+
+  const list = document.createElement('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:300px;';
+  list.textContent = 'Loading…';
+  list.style.color = '#64748b';
+  list.style.fontSize = '13px';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Close';
+  closeBtn.style.cssText = 'height:38px;border-radius:8px;border:none;background:rgba(255,255,255,0.07);color:#64748b;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer;';
+  closeBtn.addEventListener('click', () => overlay.remove());
+
+  box.appendChild(title);
+  box.appendChild(list);
+  box.appendChild(closeBtn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  const layouts = await fetchLayouts();
+  list.innerHTML = '';
+
+  if (layouts.length === 0) {
+    list.textContent = 'No saved layouts yet — use "Save Layout" first.';
+    list.style.color = '#64748b';
+    list.style.fontSize = '13px';
+    return;
+  }
+
+  layouts.forEach(layout => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);border-radius:8px;padding:8px 10px;';
+
+    const name = document.createElement('div');
+    name.textContent = layout.name;
+    name.style.cssText = 'flex:1;color:#e2e8f0;font-size:13px;font-weight:700;';
+
+    const loadBtn = document.createElement('button');
+    loadBtn.textContent = 'Load';
+    loadBtn.style.cssText = 'height:30px;padding:0 12px;border-radius:6px;border:none;background:#3b82f6;color:#fff;font-family:Nunito,sans-serif;font-size:11px;font-weight:800;cursor:pointer;';
+    loadBtn.addEventListener('click', async () => {
+      if (!confirm('Load "' + layout.name + '"? This will clear the current board.')) return;
+      overlay.remove();
+      await loadLayoutById(layout.id);
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '×';
+    delBtn.style.cssText = 'height:30px;width:30px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-weight:900;cursor:pointer;';
+    delBtn.addEventListener('click', async () => {
+      if (!confirm('Delete "' + layout.name + '"?')) return;
+      await deleteLayoutById(layout.id);
+      row.remove();
+    });
+
+    row.appendChild(name);
+    row.appendChild(loadBtn);
+    row.appendChild(delBtn);
+    list.appendChild(row);
+  });
 }
