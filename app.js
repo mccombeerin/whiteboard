@@ -321,7 +321,7 @@ function confirmAddBlock() {
     togglePopup(false);
     addBlock(text, 'none'); // 'none' = plain text, no colour block
   } else {
-    text = (popupText || $('block-input').value || '').trim().toUpperCase();
+    text = (popupText || $('block-input').value || '').trim();
     if (!text) { showToast('Please enter some text'); return; }
     togglePopup(false);
     addBlock(text, selectedColor);
