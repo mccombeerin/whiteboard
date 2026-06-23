@@ -68,7 +68,15 @@ async function boot() {
   showApp();
 
   try {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    // UPDATED: Added structural auth block to pass through cookie blocks inside Zoom iframes
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+      auth: {
+        storage: window.localStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    });
     connectToSession();
   } catch(e) {
     console.warn('[TutorBlocks] Supabase init failed:', e);
