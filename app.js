@@ -635,8 +635,29 @@ function snapshotCanvas() {
   };
 }
 
+function waitForSupabaseClient(timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    (function check() {
+      if (supabaseClient) return resolve(true);
+      if (Date.now() - start > timeoutMs) return resolve(false);
+      setTimeout(check, 150);
+    })();
+  });
+}
+
 async function saveLayout(name) {
-  if (!supabaseClient) { showToast('No Supabase client — check config.js loaded', 6000); return; }
+  const ready = await waitForSupabaseClient();
+  if (!ready) {
+    const reason = typeof SUPABASE_URL === 'undefined'
+      ? 'config.js did not load (SUPABASE_URL undefined)'
+      : typeof window.supabase === 'undefined'
+        ? 'Supabase library script did not load'
+        : 'Supabase client never initialised';
+    showToast('DB not ready: ' + reason, 7000);
+    console.error('[TutorBlocks] saveLayout: client not ready —', reason);
+    return;
+  }
   const snapshot = snapshotCanvas();
   try {
     const { error } = await supabaseClient
@@ -651,7 +672,11 @@ async function saveLayout(name) {
 }
 
 async function fetchLayouts() {
-  if (!supabaseClient) return [];
+  const ready = await waitForSupabaseClient();
+  if (!ready) {
+    showToast('Database not connected yet — try again', 5000);
+    return [];
+  }
   try {
     const { data, error } = await supabaseClient
       .from('layouts')
