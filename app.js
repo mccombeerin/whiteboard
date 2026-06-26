@@ -68,15 +68,7 @@ async function boot() {
   showApp();
 
   try {
-    // UPDATED: Added structural auth block to pass through cookie blocks inside Zoom iframes
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-      auth: {
-        storage: window.localStorage,
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true
-      }
-    });
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
     connectToSession();
   } catch(e) {
     console.warn('[TutorBlocks] Supabase init failed:', e);
@@ -644,7 +636,7 @@ function snapshotCanvas() {
 }
 
 async function saveLayout(name) {
-  if (!supabaseClient) { showToast('Not connected to database'); return; }
+  if (!supabaseClient) { showToast('No Supabase client — check config.js loaded', 6000); return; }
   const snapshot = snapshotCanvas();
   try {
     const { error } = await supabaseClient
@@ -654,7 +646,7 @@ async function saveLayout(name) {
     showToast('Layout "' + name + '" saved!');
   } catch (err) {
     console.error('[TutorBlocks] saveLayout error:', err);
-    showToast('Could not save layout — check console');
+    showToast('Save failed: ' + (err.message || JSON.stringify(err)), 7000);
   }
 }
 
