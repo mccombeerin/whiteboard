@@ -159,8 +159,9 @@ function buildToolbar() {
   tb.appendChild(makeDivider());
 
   // Clear All
-  tb.appendChild(makeBtn('Clear All', 'danger', () => {
-    if (confirm('Remove all blocks and drop zones?')) clearAll();
+  tb.appendChild(makeBtn('Clear All', 'danger', async () => {
+    const ok = await customConfirm('Remove all blocks and drop zones?');
+    if (ok) clearAll();
   }));
 
   // Re-invite
@@ -847,7 +848,8 @@ async function openLoadLayoutModal() {
     loadBtn.textContent = 'Load';
     loadBtn.style.cssText = 'height:30px;padding:0 12px;border-radius:6px;border:none;background:#3b82f6;color:#fff;font-family:Nunito,sans-serif;font-size:11px;font-weight:800;cursor:pointer;';
     loadBtn.addEventListener('click', async () => {
-      if (!confirm('Load "' + layout.name + '"? This will clear the current board.')) return;
+      const ok = await customConfirm('Load "' + layout.name + '"? This will clear the current board.');
+      if (!ok) return;
       overlay.remove();
       await loadLayoutById(layout.id);
     });
@@ -856,7 +858,8 @@ async function openLoadLayoutModal() {
     delBtn.textContent = '×';
     delBtn.style.cssText = 'height:30px;width:30px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#f87171;font-weight:900;cursor:pointer;';
     delBtn.addEventListener('click', async () => {
-      if (!confirm('Delete "' + layout.name + '"?')) return;
+      const ok = await customConfirm('Delete "' + layout.name + '"?');
+      if (!ok) return;
       await deleteLayoutById(layout.id);
       row.remove();
     });
@@ -865,5 +868,46 @@ async function openLoadLayoutModal() {
     row.appendChild(loadBtn);
     row.appendChild(delBtn);
     list.appendChild(row);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   CUSTOM CONFIRM MODAL (replaces native confirm() which is
+   blocked/unreliable inside Zoom's sandboxed iframe)
+═══════════════════════════════════════════ */
+
+function customConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:2000;';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#252d3d;border-radius:14px;padding:22px;width:300px;display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,0.4);';
+
+    const msg = document.createElement('div');
+    msg.textContent = message;
+    msg.style.cssText = 'color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;line-height:1.5;';
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'flex:1;height:38px;border-radius:8px;border:none;background:rgba(255,255,255,0.07);color:#94a3b8;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer;';
+    cancelBtn.addEventListener('click', () => { overlay.remove(); resolve(false); });
+
+    const okBtn = document.createElement('button');
+    okBtn.textContent = 'Confirm';
+    okBtn.style.cssText = 'flex:1;height:38px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-family:Nunito,sans-serif;font-weight:800;cursor:pointer;';
+    okBtn.addEventListener('click', () => { overlay.remove(); resolve(true); });
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(okBtn);
+    box.appendChild(msg);
+    box.appendChild(btnRow);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); resolve(false); } });
   });
 }
