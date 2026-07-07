@@ -394,6 +394,7 @@ function renderBlock(data) {
   // Apply formatting
   const fmt = data.fmt || {};
   if (fmt.bold) el.style.fontWeight = '900';
+  else if (data.color !== 'none') el.style.fontWeight = '500';
   if (fmt.underline) el.style.textDecoration = 'underline';
 
   const rm = document.createElement('div');
