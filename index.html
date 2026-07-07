@@ -311,6 +311,19 @@
 
     /* Color swatches in popup */
     .swatch-row { display: flex; gap: 7px; }
+    .fmt-btn {
+      min-width: 36px; height: 32px; padding: 0 10px;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.1);
+      color: #94a3b8; font-family: 'Nunito', sans-serif;
+      font-size: 13px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .fmt-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .fmt-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
     .swatch {
       width: 26px; height: 26px; border-radius: 50%;
       border: 3px solid transparent;
@@ -398,6 +411,17 @@
   <div id="colour-section">
     <div class="chip-section-label" style="margin-top:2px;">Colour</div>
     <div class="swatch-row" id="swatch-row"></div>
+  </div>
+
+  <div id="format-section">
+    <div class="chip-section-label" style="margin-top:2px;">Format</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+      <div class="fmt-btn active" id="fmt-mixed" title="Mixed case">Aa</div>
+      <div class="fmt-btn" id="fmt-upper" title="Uppercase">AA</div>
+      <div class="fmt-btn" id="fmt-lower" title="Lowercase">aa</div>
+      <div class="fmt-btn" id="fmt-bold" title="Bold"><b>B</b></div>
+      <div class="fmt-btn" id="fmt-underline" title="Underline"><u>U</u></div>
+    </div>
   </div>
 
   <div class="pop-actions">

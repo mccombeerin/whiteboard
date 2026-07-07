@@ -25,6 +25,9 @@ let channel        = null;
 let isTutor        = true;
 let selectedColor  = BLOCK_COLORS[0];
 let popupText      = '';
+let formatCase     = 'mixed'; // 'mixed' | 'upper' | 'lower'
+let formatBold     = false;
+let formatUnderline = false;
 
 const blocks    = {};
 const dropZones = {};
@@ -285,6 +288,27 @@ function buildPopup() {
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   });
 
+  // Format buttons
+  const fmtCaseBtns = { mixed: $('fmt-mixed'), upper: $('fmt-upper'), lower: $('fmt-lower') };
+  Object.entries(fmtCaseBtns).forEach(([key, btn]) => {
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      formatCase = key;
+      Object.values(fmtCaseBtns).forEach(b => b && b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+  const boldBtn = $('fmt-bold');
+  if (boldBtn) boldBtn.addEventListener('click', () => {
+    formatBold = !formatBold;
+    boldBtn.classList.toggle('active', formatBold);
+  });
+  const ulBtn = $('fmt-underline');
+  if (ulBtn) ulBtn.addEventListener('click', () => {
+    formatUnderline = !formatUnderline;
+    ulBtn.classList.toggle('active', formatUnderline);
+  });
+
   $('popup-confirm').addEventListener('click', () => confirmAddBlock());
   $('popup-cancel').addEventListener('click', () => togglePopup(false));
   $('block-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmAddBlock(); });
@@ -314,18 +338,25 @@ function togglePopup(open) {
   }
 }
 
+function applyCase(text) {
+  if (formatCase === 'upper') return text.toUpperCase();
+  if (formatCase === 'lower') return text.toLowerCase();
+  return text; // 'mixed' — keep as typed
+}
+
 function confirmAddBlock() {
+  const fmt = { bold: formatBold, underline: formatUnderline, textCase: formatCase };
   let text = '';
   if (freeTextMode) {
-    text = ($('free-text-input').value || '').trim();
+    text = applyCase(($('free-text-input').value || '').trim());
     if (!text) { showToast('Please enter some text'); return; }
     togglePopup(false);
-    addBlock(text, 'none'); // 'none' = plain text, no colour block
+    addBlock(text, 'none', null, null, null, fmt);
   } else {
-    text = (popupText || $('block-input').value || '').trim();
+    text = applyCase((popupText || $('block-input').value || '').trim());
     if (!text) { showToast('Please enter some text'); return; }
     togglePopup(false);
-    addBlock(text, selectedColor);
+    addBlock(text, selectedColor, null, null, null, fmt);
   }
 }
 
@@ -333,12 +364,12 @@ function confirmAddBlock() {
    BLOCKS
 ═══════════════════════════════════════════ */
 
-function addBlock(text, color, id = null, x = null, y = null) {
+function addBlock(text, color, id = null, x = null, y = null, fmt = {}) {
   const canvas = $('canvas-wrap');
   const blockId = id || 'blk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
   const cx = x ?? (canvas.clientWidth  / 2 - 40 + Math.random() * 80 - 40);
   const cy = y ?? (canvas.clientHeight / 2 - 28 + Math.random() * 80 - 40);
-  const data = { id: blockId, text, color, x: cx, y: cy, snappedTo: null };
+  const data = { id: blockId, text, color, x: cx, y: cy, snappedTo: null, fmt };
   blocks[blockId] = data;
   renderBlock(data);
   if (!id) broadcast({ type: 'add_block', ...data });
@@ -375,6 +406,11 @@ function renderBlock(data) {
     el.style.background = data.color;
   }
   el.textContent = data.text;
+
+  // Apply formatting
+  const fmt = data.fmt || {};
+  if (fmt.bold) el.style.fontWeight = '900';
+  if (fmt.underline) el.style.textDecoration = 'underline';
 
   const rm = document.createElement('div');
   rm.className = 'blk-remove';
@@ -584,7 +620,7 @@ function broadcast(payload) {
 function handleRemoteUpdate(payload) {
   switch (payload.type) {
     case 'add_block':
-      if (!blocks[payload.id]) addBlock(payload.text, payload.color, payload.id, payload.x, payload.y);
+      if (!blocks[payload.id]) addBlock(payload.text, payload.color, payload.id, payload.x, payload.y, payload.fmt || {});
       break;
     case 'remove_block':
       delete blocks[payload.id];
