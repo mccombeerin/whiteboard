@@ -256,14 +256,15 @@
     /* ── BLOCK INPUT POPUP ── */
     #block-popup {
       position: fixed;
-      bottom: 80px; left: 20px;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
       background: var(--toolbar-2);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 14px;
       padding: 16px;
       width: 300px;
-      max-height: calc(100vh - 120px);
-      overflow-y: visible;
+      max-height: 90vh;
+      overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
       display: none;
       flex-direction: column;
@@ -398,37 +399,31 @@
 <div id="block-popup">
   <div class="pop-title">New Text Block</div>
 
-  <!-- Scrollable middle section -->
-  <div style="overflow-y:auto; max-height:280px; display:flex; flex-direction:column; gap:10px;">
-    <div id="presets-section">
-      <input type="text" id="block-input" maxlength="10" placeholder="Type a letter or word…" style="margin-bottom:8px;"/>
-      <div class="chip-section-label">Letters</div>
-      <div class="chip-row" id="chip-letters"></div>
-      <div class="chip-section-label" style="margin-top:2px;">Words</div>
-      <div class="chip-row" id="chip-words"></div>
-    </div>
+  <div id="presets-section">
+    <input type="text" id="block-input" maxlength="10" placeholder="Type a letter or word…" style="margin-bottom:8px;"/>
+    <div class="chip-section-label">Letters</div>
+    <div class="chip-row" id="chip-letters"></div>
+    <div class="chip-section-label" style="margin-top:2px;">Words</div>
+    <div class="chip-row" id="chip-words"></div>
+  </div>
 
-    <div id="free-text-section" style="display:none;">
-      <div class="chip-section-label">Type anything</div>
-      <textarea id="free-text-input" rows="3" placeholder="Type your text here…" style="width:100%;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:600;padding:10px 12px;outline:none;resize:none;margin-top:4px;"></textarea>
-    </div>
+  <div id="free-text-section" style="display:none;">
+    <div class="chip-section-label">Type anything</div>
+    <textarea id="free-text-input" rows="3" placeholder="Type your text here…" style="width:100%;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:600;padding:10px 12px;outline:none;resize:none;margin-top:4px;"></textarea>
   </div>
 
   <!-- Always visible: format, colour, buttons -->
-  <div id="format-section">
-    <div class="chip-section-label">Format</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <div class="fmt-btn active" id="fmt-mixed" title="Mixed case">Aa</div>
-      <div class="fmt-btn" id="fmt-upper" title="Uppercase">AA</div>
-      <div class="fmt-btn" id="fmt-lower" title="Lowercase">aa</div>
-      <div class="fmt-btn" id="fmt-bold" title="Bold"><b>B</b></div>
-      <div class="fmt-btn" id="fmt-underline" title="Underline"><u>U</u></div>
-    </div>
-  </div>
-
   <div id="colour-section">
     <div class="chip-section-label">Colour</div>
     <div class="swatch-row" id="swatch-row"></div>
+  </div>
+
+  <div id="format-section">
+    <div class="chip-section-label">Format</div>
+    <div style="display:flex;gap:6px;margin-top:4px;">
+      <div class="fmt-btn" id="fmt-bold" title="Bold"><b>Bold</b></div>
+      <div class="fmt-btn" id="fmt-underline" title="Underline"><u>Underline</u></div>
+    </div>
   </div>
 
   <div class="pop-actions">

@@ -25,7 +25,6 @@ let channel        = null;
 let isTutor        = true;
 let selectedColor  = BLOCK_COLORS[0];
 let popupText      = '';
-let formatCase     = 'mixed'; // 'mixed' | 'upper' | 'lower'
 let formatBold     = false;
 let formatUnderline = false;
 
@@ -289,15 +288,6 @@ function buildPopup() {
   });
 
   // Format buttons
-  const fmtCaseBtns = { mixed: $('fmt-mixed'), upper: $('fmt-upper'), lower: $('fmt-lower') };
-  Object.entries(fmtCaseBtns).forEach(([key, btn]) => {
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      formatCase = key;
-      Object.values(fmtCaseBtns).forEach(b => b && b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-  });
   const boldBtn = $('fmt-bold');
   if (boldBtn) boldBtn.addEventListener('click', () => {
     formatBold = !formatBold;
@@ -338,22 +328,16 @@ function togglePopup(open) {
   }
 }
 
-function applyCase(text) {
-  if (formatCase === 'upper') return text.toUpperCase();
-  if (formatCase === 'lower') return text.toLowerCase();
-  return text; // 'mixed' — keep as typed
-}
-
 function confirmAddBlock() {
-  const fmt = { bold: formatBold, underline: formatUnderline, textCase: formatCase };
+  const fmt = { bold: formatBold, underline: formatUnderline };
   let text = '';
   if (freeTextMode) {
-    text = applyCase(($('free-text-input').value || '').trim());
+    text = ($('free-text-input').value || '').trim();
     if (!text) { showToast('Please enter some text'); return; }
     togglePopup(false);
     addBlock(text, 'none', null, null, null, fmt);
   } else {
-    text = applyCase((popupText || $('block-input').value || '').trim());
+    text = (popupText || $('block-input').value || '').trim();
     if (!text) { showToast('Please enter some text'); return; }
     togglePopup(false);
     addBlock(text, selectedColor, null, null, null, fmt);
