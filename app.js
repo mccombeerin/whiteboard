@@ -567,6 +567,13 @@ function makeDraggable(el, objectId, objectType) {
         e.target.classList.contains('dz-lock')) return;
     if (objectType === 'zone' && dropZones[objectId] && dropZones[objectId].locked) return;
 
+    // If clicking on a textarea's resize handle (bottom-right 16px corner), let browser handle it
+    if (e.target.tagName === 'TEXTAREA') {
+      const rect = e.target.getBoundingClientRect();
+      const inResizeCorner = (e.clientX > rect.right - 16) && (e.clientY > rect.bottom - 16);
+      if (inResizeCorner) return;
+    }
+
     e.preventDefault();
     dragging = true;
     el.setPointerCapture(e.pointerId);
