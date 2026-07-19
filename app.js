@@ -407,60 +407,61 @@ function renderBlock(data) {
   el.style.top  = data.y + 'px';
 
   if (data.color === 'none') {
-    // Plain text — transparent, resizable, font scales with size
-    // Outer el: overflow:visible so remove button shows, but we need a resize wrapper inside
+    // Plain text block — outer el is overflow:visible for remove button
     el.className = 'text-block text-plain';
-    el.style.background = 'transparent';
-    el.style.border = 'none';
-    el.style.boxShadow = 'none';
-    el.style.padding = '0';
-    el.style.overflow = 'visible';
-    el.style.width = data.w ? data.w + 'px' : '160px';
-    el.style.height = data.h ? data.h + 'px' : '60px';
+    el.style.cssText += ';background:transparent;border:none;box-shadow:none;padding:0;overflow:visible;display:block;';
+    el.style.width  = (data.w || 160) + 'px';
+    el.style.height = (data.h || 60)  + 'px';
 
-    // Inner resize wrapper — this is what actually has resize:both
-    const resizeWrap = document.createElement('div');
-    resizeWrap.style.cssText = [
-      'width:100%', 'height:100%',
-      'min-width:80px', 'min-height:40px',
-      'resize:both', 'overflow:auto',
-      'border:2px dashed rgba(0,0,0,0.18)',
+    // Use a textarea for native resize support
+    const ta = document.createElement('textarea');
+    ta.value = data.text || '';
+    ta.readOnly = true; // not editable once placed
+    ta.style.cssText = [
+      'width:100%',
+      'height:100%',
+      'min-width:80px',
+      'min-height:40px',
+      'resize:both',
+      'overflow:auto',
+      'border:2px dashed rgba(0,0,0,0.25)',
       'border-radius:6px',
       'padding:6px 10px',
       'box-sizing:border-box',
-      'display:flex', 'align-items:center',
-      'word-break:break-word',
-      'white-space:pre-wrap',
-      'line-height:1.4',
+      'background:transparent',
       'color:#1a202c',
       'font-family:Nunito,sans-serif',
       'font-weight:500',
       'font-size:18px',
+      'line-height:1.4',
+      'cursor:grab',
+      'outline:none',
+      'display:block',
     ].join(';');
-    el.appendChild(resizeWrap);
+    el.appendChild(ta);
 
-    // Scale font size as inner wrapper is resized
-    const resizeObserver = new ResizeObserver(() => {
-      const w = resizeWrap.offsetWidth;
-      const h = resizeWrap.offsetHeight;
-      // Sync outer el size so drag logic stays accurate
-      el.style.width  = resizeWrap.offsetWidth  + 'px';
-      el.style.height = resizeWrap.offsetHeight + 'px';
-      const size = Math.max(10, Math.min(Math.floor(h * 0.45), Math.floor(w * 0.18)));
-      resizeWrap.style.fontSize = size + 'px';
-    });
-    resizeObserver.observe(resizeWrap);
+    // Scale font as textarea is resized
+    new ResizeObserver(() => {
+      const w = ta.offsetWidth;
+      const h = ta.offsetHeight;
+      el.style.width  = w + 'px';
+      el.style.height = h + 'px';
+      const size = Math.max(10, Math.min(Math.floor(h * 0.4), Math.floor(w * 0.15)));
+      ta.style.fontSize = size + 'px';
+    }).observe(ta);
+
   } else {
     el.className = 'text-block';
     el.style.background = data.color;
   }
 
   // Put rich content into the right container
-  const contentTarget = (data.color === 'none' && el.querySelector('div')) ? el.querySelector('div') : el;
-  if (data.html) {
-    contentTarget.innerHTML = data.html;
+  if (data.color === 'none') {
+    // textarea already has value set above — nothing to do here
+  } else if (data.html) {
+    el.innerHTML = data.html;
   } else {
-    contentTarget.textContent = data.text;
+    el.textContent = data.text;
   }
 
   const rm = document.createElement('div');
