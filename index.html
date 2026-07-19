@@ -399,31 +399,36 @@
 <div id="block-popup">
   <div class="pop-title">New Text Block</div>
 
+  <!-- Format buttons — always visible, apply to selection in editor -->
+  <div id="format-section">
+    <div class="chip-section-label">Format</div>
+    <div style="display:flex;gap:6px;margin-top:4px;">
+      <div class="fmt-btn" id="fmt-bold" title="Bold" onclick="applyFormat('bold')"><b>Bold</b></div>
+      <div class="fmt-btn" id="fmt-underline" title="Underline" onclick="applyFormat('underline')"><u>Underline</u></div>
+    </div>
+  </div>
+
   <div id="presets-section">
-    <input type="text" id="block-input" maxlength="10" placeholder="Type a letter or word…" style="margin-bottom:8px;"/>
     <div class="chip-section-label">Letters</div>
     <div class="chip-row" id="chip-letters"></div>
     <div class="chip-section-label" style="margin-top:2px;">Words</div>
     <div class="chip-row" id="chip-words"></div>
   </div>
 
-  <div id="free-text-section" style="display:none;">
-    <div class="chip-section-label">Type anything</div>
-    <textarea id="free-text-input" rows="3" placeholder="Type your text here…" style="width:100%;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:Nunito,sans-serif;font-size:14px;font-weight:600;padding:10px 12px;outline:none;resize:none;margin-top:4px;"></textarea>
-  </div>
+  <!-- Shared rich text editor — used by both tabs -->
+  <div class="chip-section-label" id="editor-label">Type or select a preset above</div>
+  <div id="rich-editor"
+    contenteditable="true"
+    spellcheck="false"
+    style="min-height:44px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-family:Nunito,sans-serif;font-size:18px;font-weight:500;padding:10px 12px;outline:none;white-space:pre-wrap;word-break:break-word;cursor:text;line-height:1.5;"
+  ></div>
 
-  <!-- Always visible: format, colour, buttons -->
+  <div id="free-text-section" style="display:none;"></div>
+
+  <!-- Colour -->
   <div id="colour-section">
     <div class="chip-section-label">Colour</div>
     <div class="swatch-row" id="swatch-row"></div>
-  </div>
-
-  <div id="format-section">
-    <div class="chip-section-label">Format</div>
-    <div style="display:flex;gap:6px;margin-top:4px;">
-      <div class="fmt-btn" id="fmt-bold" title="Bold"><b>Bold</b></div>
-      <div class="fmt-btn" id="fmt-underline" title="Underline"><u>Underline</u></div>
-    </div>
   </div>
 
   <div class="pop-actions">

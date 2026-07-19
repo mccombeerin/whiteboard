@@ -63,6 +63,27 @@ function updateOnlineCount(n) {
    BOOT — show canvas immediately, connect in background
 ═══════════════════════════════════════════ */
 
+
+/* ═══════════════════════════════════════════
+   RICH TEXT EDITOR — per-character formatting
+═══════════════════════════════════════════ */
+
+function applyFormat(cmd) {
+  // cmd: 'bold' or 'underline'
+  // Uses document.execCommand on the contenteditable editor
+  const editor = document.getElementById('rich-editor');
+  if (!editor) return;
+  editor.focus();
+  document.execCommand(cmd, false, null);
+  // Update button active state
+  const boldActive = document.queryCommandState('bold');
+  const ulActive   = document.queryCommandState('underline');
+  const boldBtn = document.getElementById('fmt-bold');
+  const ulBtn   = document.getElementById('fmt-underline');
+  if (boldBtn) boldBtn.classList.toggle('active', boldActive);
+  if (ulBtn)   ulBtn.classList.toggle('active', ulActive);
+}
+
 window.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
@@ -198,6 +219,8 @@ let freeTextMode = false; // module-level so confirmAddBlock can read it
 function buildPopup() {
   const presetsSection  = $('presets-section');
   const freeTextSection = $('free-text-section');
+  const editor          = $('rich-editor');
+  const editorLabel     = $('editor-label');
 
   // Build tab row once
   if (!$('popup-tab-row')) {
@@ -218,8 +241,8 @@ function buildPopup() {
     tabRow.appendChild(btnLetters);
     tabRow.appendChild(btnFree);
 
-    const popup = $('block-popup');
-    const title = popup.querySelector('.pop-title');
+    const popup  = $('block-popup');
+    const title  = popup.querySelector('.pop-title');
     title.after(tabRow);
 
     btnLetters.addEventListener('click', () => {
@@ -227,8 +250,7 @@ function buildPopup() {
       btnLetters.style.background = '#3b82f6'; btnLetters.style.color = '#fff';
       btnFree.style.background = 'rgba(255,255,255,0.07)'; btnFree.style.color = '#94a3b8';
       presetsSection.style.display = 'block';
-      freeTextSection.style.display = 'none';
-      // Show colour picker
+      editorLabel.textContent = 'Type or select a preset above';
       const cs = $('colour-section'); if (cs) cs.style.display = 'block';
     });
 
@@ -237,18 +259,25 @@ function buildPopup() {
       btnFree.style.background = '#3b82f6'; btnFree.style.color = '#fff';
       btnLetters.style.background = 'rgba(255,255,255,0.07)'; btnLetters.style.color = '#94a3b8';
       presetsSection.style.display = 'none';
-      freeTextSection.style.display = 'block';
-      // Hide colour picker
+      editorLabel.textContent = 'Type your text';
       const cs = $('colour-section'); if (cs) cs.style.display = 'none';
-      setTimeout(() => $('free-text-input').focus(), 50);
+      setTimeout(() => editor && editor.focus(), 50);
     });
   }
 
-  // Letter chips
+  // Update bold/underline button state when selection changes
+  if (editor) {
+    editor.addEventListener('keyup',        updateFmtBtnState);
+    editor.addEventListener('mouseup',      updateFmtBtnState);
+    editor.addEventListener('selectionchange', updateFmtBtnState);
+  }
+  document.addEventListener('selectionchange', updateFmtBtnState);
+
+  // Letter chips — clicking inserts text into the rich editor
   const chipLetters = $('chip-letters');
   PRESET_LETTERS.forEach(l => {
     const chip = makeChip(l, () => {
-      $('block-input').value = l; popupText = l;
+      if (editor) { editor.focus(); editor.innerHTML = l; placeCaretAtEnd(editor); }
       chipLetters.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       $('chip-words').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
@@ -260,7 +289,7 @@ function buildPopup() {
   const chipWords = $('chip-words');
   PRESET_WORDS.forEach(w => {
     const chip = makeChip(w, () => {
-      $('block-input').value = w; popupText = w;
+      if (editor) { editor.focus(); editor.innerHTML = w; placeCaretAtEnd(editor); }
       chipWords.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       chipLetters.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
@@ -282,27 +311,34 @@ function buildPopup() {
     swatchRow.appendChild(sw);
   });
 
-  $('block-input').addEventListener('input', e => {
-    popupText = e.target.value.trim();
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  });
-
-  // Format buttons
+  // Bold/underline buttons
   const boldBtn = $('fmt-bold');
-  if (boldBtn) boldBtn.addEventListener('click', () => {
-    formatBold = !formatBold;
-    boldBtn.classList.toggle('active', formatBold);
-  });
-  const ulBtn = $('fmt-underline');
-  if (ulBtn) ulBtn.addEventListener('click', () => {
-    formatUnderline = !formatUnderline;
-    ulBtn.classList.toggle('active', formatUnderline);
-  });
+  const ulBtn   = $('fmt-underline');
+  if (boldBtn) boldBtn.addEventListener('click', () => applyFormat('bold'));
+  if (ulBtn)   ulBtn.addEventListener('click',   () => applyFormat('underline'));
 
   $('popup-confirm').addEventListener('click', () => confirmAddBlock());
-  $('popup-cancel').addEventListener('click', () => togglePopup(false));
-  $('block-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmAddBlock(); });
-  $('free-text-input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmAddBlock(); } });
+  $('popup-cancel').addEventListener('click',  () => togglePopup(false));
+  if (editor) editor.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && freeTextMode) { e.preventDefault(); confirmAddBlock(); }
+  });
+}
+
+function updateFmtBtnState() {
+  const boldBtn = $('fmt-bold');
+  const ulBtn   = $('fmt-underline');
+  if (boldBtn) boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+  if (ulBtn)   ulBtn.classList.toggle('active',   document.queryCommandState('underline'));
+}
+
+function placeCaretAtEnd(el) {
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
 }
 
 function makeChip(text, onClick) {
@@ -317,30 +353,38 @@ function togglePopup(open) {
   const popup = $('block-popup');
   if (open) {
     popup.classList.add('open');
-    setTimeout(() => $('block-input').focus(), 50);
+    setTimeout(() => {
+      const editor = $('rich-editor');
+      if (editor) { editor.innerHTML = ''; editor.focus(); }
+    }, 50);
   } else {
     popup.classList.remove('open');
-    $('block-input').value = '';
-    const fi = $('free-text-input');
-    if (fi) fi.value = '';
+    const editor = $('rich-editor');
+    if (editor) editor.innerHTML = '';
     popupText = '';
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    // Reset format buttons
+    const boldBtn = $('fmt-bold');
+    const ulBtn   = $('fmt-underline');
+    if (boldBtn) boldBtn.classList.remove('active');
+    if (ulBtn)   ulBtn.classList.remove('active');
   }
 }
 
 function confirmAddBlock() {
-  const fmt = { bold: formatBold, underline: formatUnderline };
-  let text = '';
+  const editor = $('rich-editor');
+  const html = editor ? editor.innerHTML.trim() : '';
+  const plainText = editor ? (editor.innerText || editor.textContent || '').trim() : '';
+
+  if (!plainText) { showToast('Please enter some text'); return; }
+
+  // html contains inline <b> and <u> tags for per-character formatting
   if (freeTextMode) {
-    text = ($('free-text-input').value || '').trim();
-    if (!text) { showToast('Please enter some text'); return; }
     togglePopup(false);
-    addBlock(text, 'none', null, null, null, fmt);
+    addBlock(plainText, 'none', null, null, null, {}, html);
   } else {
-    text = (popupText || $('block-input').value || '').trim();
-    if (!text) { showToast('Please enter some text'); return; }
     togglePopup(false);
-    addBlock(text, selectedColor, null, null, null, fmt);
+    addBlock(plainText, selectedColor, null, null, null, {}, html);
   }
 }
 
@@ -348,12 +392,14 @@ function confirmAddBlock() {
    BLOCKS
 ═══════════════════════════════════════════ */
 
-function addBlock(text, color, id = null, x = null, y = null, fmt = {}) {
+function addBlock(text, color, id = null, x = null, y = null, fmt = {}, html = '') {
   const canvas = $('canvas-wrap');
   const blockId = id || 'blk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
   const cx = x ?? (canvas.clientWidth  / 2 - 40 + Math.random() * 80 - 40);
   const cy = y ?? (canvas.clientHeight / 2 - 28 + Math.random() * 80 - 40);
-  const data = { id: blockId, text, color, x: cx, y: cy, snappedTo: null, fmt };
+  // Sanitise html — only allow b, u, strong, em, span tags
+  const safeHtml = html ? html.replace(/<(?!\/?(?:b|u|strong|em|span)[>\s])[^>]+>/gi, '') : '';
+  const data = { id: blockId, text, color, x: cx, y: cy, snappedTo: null, fmt, html: safeHtml };
   blocks[blockId] = data;
   renderBlock(data);
   if (!id) broadcast({ type: 'add_block', ...data });
@@ -389,13 +435,12 @@ function renderBlock(data) {
     el.className = 'text-block';
     el.style.background = data.color;
   }
-  el.textContent = data.text;
-
-  // Apply formatting
-  const fmt = data.fmt || {};
-  if (fmt.bold) el.style.fontWeight = '900';
-  else if (data.color !== 'none') el.style.fontWeight = '500';
-  if (fmt.underline) el.style.textDecoration = 'underline';
+  // Use rich HTML if available, else plain text
+  if (data.html) {
+    el.innerHTML = data.html;
+  } else {
+    el.textContent = data.text;
+  }
 
   const rm = document.createElement('div');
   rm.className = 'blk-remove';
@@ -605,7 +650,7 @@ function broadcast(payload) {
 function handleRemoteUpdate(payload) {
   switch (payload.type) {
     case 'add_block':
-      if (!blocks[payload.id]) addBlock(payload.text, payload.color, payload.id, payload.x, payload.y, payload.fmt || {});
+      if (!blocks[payload.id]) addBlock(payload.text, payload.color, payload.id, payload.x, payload.y, payload.fmt || {}, payload.html || '');
       break;
     case 'remove_block':
       delete blocks[payload.id];
