@@ -24,6 +24,10 @@ let supabaseClient = null;
 let channel        = null;
 let isTutor        = true;
 let selectedColor  = BLOCK_COLORS[0];
+let zoomLevel      = 1.0; // canvas zoom scale
+const ZOOM_MIN     = 0.3;
+const ZOOM_MAX     = 3.0;
+const ZOOM_STEP    = 0.15;
 let popupText      = '';
 let formatBold     = false;
 let formatUnderline = false;
@@ -83,6 +87,23 @@ function applyFormat(cmd) {
   if (boldBtn) boldBtn.classList.toggle('active', boldActive);
   if (ulBtn)   ulBtn.classList.toggle('active', ulActive);
 }
+
+
+/* ═══════════════════════════════════════════
+   CANVAS ZOOM
+═══════════════════════════════════════════ */
+
+function setZoom(level) {
+  zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, level));
+  const canvas = $('canvas');
+  if (canvas) canvas.style.transform = 'scale(' + zoomLevel + ')';
+  const label = $('zoom-label');
+  if (label) label.textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+function zoomIn()  { setZoom(zoomLevel + ZOOM_STEP); }
+function zoomOut() { setZoom(zoomLevel - ZOOM_STEP); }
+function zoomReset() { setZoom(1.0); }
 
 window.addEventListener('DOMContentLoaded', boot);
 
@@ -153,6 +174,43 @@ function showApp() {
   if (pill) { pill.textContent = 'Whiteboard'; pill.className = 'role-pill tutor'; }
   buildToolbar();
   buildPopup();
+  initZoomGestures();
+}
+
+function initZoomGestures() {
+  const wrap = $('canvas-wrap');
+  if (!wrap) return;
+
+  // Scroll wheel zoom
+  wrap.addEventListener('wheel', e => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+      setZoom(zoomLevel + delta);
+    }
+  }, { passive: false });
+
+  // Pinch to zoom (touch)
+  let lastPinchDist = null;
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      lastPinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+  }, { passive: true });
+  wrap.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && lastPinchDist) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      setZoom(zoomLevel * (dist / lastPinchDist));
+      lastPinchDist = dist;
+    }
+  }, { passive: true });
+  wrap.addEventListener('touchend', () => { lastPinchDist = null; });
 }
 
 /* ═══════════════════════════════════════════
@@ -187,12 +245,47 @@ function buildToolbar() {
     if (ok) clearAll();
   }));
 
+  // Zoom controls
+  const zoomWrap = document.createElement('div');
+  zoomWrap.className = 'zoom-control';
+  zoomWrap.style.marginLeft = 'auto';
+
+  const zoomOut = document.createElement('button');
+  zoomOut.className = 'zoom-btn';
+  zoomOut.textContent = '−';
+  zoomOut.title = 'Zoom out';
+  zoomOut.addEventListener('click', () => { zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP); setZoom(zoomLevel); });
+
+  const zoomLabelEl = document.createElement('div');
+  zoomLabelEl.className = 'zoom-label';
+  zoomLabelEl.id = 'zoom-label';
+  zoomLabelEl.textContent = '100%';
+
+  const zoomIn = document.createElement('button');
+  zoomIn.className = 'zoom-btn';
+  zoomIn.textContent = '+';
+  zoomIn.title = 'Zoom in';
+  zoomIn.addEventListener('click', () => { zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP); setZoom(zoomLevel); });
+
+  const zoomResetBtn = document.createElement('button');
+  zoomResetBtn.className = 'zoom-btn';
+  zoomResetBtn.textContent = '⊙';
+  zoomResetBtn.title = 'Reset zoom';
+  zoomResetBtn.style.fontSize = '13px';
+  zoomResetBtn.addEventListener('click', () => setZoom(1.0));
+
+  zoomWrap.appendChild(zoomOut);
+  zoomWrap.appendChild(zoomLabelEl);
+  zoomWrap.appendChild(zoomIn);
+  zoomWrap.appendChild(zoomResetBtn);
+  tb.appendChild(zoomWrap);
+
   // Re-invite
-  const inviteBtn = makeBtn('Re-invite Students', 'secondary', async () => {
+  const inviteBtn = makeBtn('📨', 'secondary', async () => {
     await sendZoomInvitation();
     showToast('Invite sent!');
   });
-  inviteBtn.style.marginLeft = 'auto';
+  inviteBtn.title = 'Re-invite students';
   tb.appendChild(inviteBtn);
 }
 
