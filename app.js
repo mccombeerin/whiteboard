@@ -407,24 +407,35 @@ function renderBlock(data) {
   el.style.top  = data.y + 'px';
 
   if (data.color === 'none') {
-    // Plain text — transparent, resizable, draggable
+    // Plain text — transparent, resizable, font scales with size
     el.className = 'text-block text-plain';
     el.style.background = 'transparent';
     el.style.border = '2px dashed rgba(0,0,0,0.18)';
     el.style.boxShadow = 'none';
     el.style.color = '#1a202c';
     el.style.fontSize = '18px';
-    el.style.fontWeight = '700';
+    el.style.fontWeight = '500';
     el.style.padding = '6px 10px';
-    el.style.minWidth = '60px';
-    el.style.minHeight = '30px';
-    el.style.width = data.w ? data.w + 'px' : 'auto';
-    el.style.height = data.h ? data.h + 'px' : 'auto';
+    el.style.minWidth = '80px';
+    el.style.minHeight = '40px';
+    el.style.width = data.w ? data.w + 'px' : '160px';
+    el.style.height = data.h ? data.h + 'px' : '60px';
     el.style.whiteSpace = 'pre-wrap';
-    el.style.maxWidth = '400px';
     el.style.lineHeight = '1.4';
-    el.style.overflow = 'hidden';
-    el.style.resize = 'both'; // browser native resize handle
+    el.style.overflow = 'visible'; // allow remove button to show outside bounds
+    el.style.resize = 'both';
+    el.style.display = 'block'; // resize:both needs block or inline-block
+    el.style.wordBreak = 'break-word';
+
+    // Scale font size as the element is resized
+    const resizeObserver = new ResizeObserver(() => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      // Font size scales proportionally to the smaller dimension
+      const size = Math.max(10, Math.min(Math.floor(h * 0.45), Math.floor(w * 0.18)));
+      el.style.fontSize = size + 'px';
+    });
+    resizeObserver.observe(el);
   } else {
     el.className = 'text-block';
     el.style.background = data.color;

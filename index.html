@@ -218,9 +218,11 @@
       background: var(--danger); border-radius: 50%;
       color: #fff; font-size: 12px; font-weight: 900;
       display: none; align-items: center; justify-content: center;
-      cursor: pointer; z-index: 10; line-height: 1;
+      cursor: pointer; z-index: 20; line-height: 1;
     }
     .text-block:hover .blk-remove { display: flex; }
+    /* Allow remove button to show outside block bounds */
+    .text-block { overflow: visible !important; }
 
     /* ── BOTTOM TOOLBAR ── */
     #toolbar {
