@@ -440,14 +440,21 @@ function renderBlock(data) {
     ].join(';');
     el.appendChild(ta);
 
-    // Scale font as textarea is resized
+    // Scale font and sync outer el size as textarea is resized
     new ResizeObserver(() => {
       const w = ta.offsetWidth;
       const h = ta.offsetHeight;
+      // Sync outer el so remove button and drag bounds stay correct
       el.style.width  = w + 'px';
       el.style.height = h + 'px';
       const size = Math.max(10, Math.min(Math.floor(h * 0.4), Math.floor(w * 0.15)));
       ta.style.fontSize = size + 'px';
+      // Keep remove button visible by repositioning it on the outer el
+      const rm = el.querySelector('.blk-remove');
+      if (rm) {
+        rm.style.top   = '-8px';
+        rm.style.right = '-8px';
+      }
     }).observe(ta);
 
   } else {
@@ -467,8 +474,10 @@ function renderBlock(data) {
   const rm = document.createElement('div');
   rm.className = 'blk-remove';
   rm.textContent = 'x';
+  rm.style.cssText += ';position:absolute;top:-8px;right:-8px;z-index:50;pointer-events:all;';
+  rm.addEventListener('pointerdown', e => e.stopPropagation()); // stop drag starting
   rm.addEventListener('click', e => { e.stopPropagation(); removeBlock(data.id); });
-  el.appendChild(rm);
+  el.appendChild(rm); // always last child so it renders on top
 
   makeDraggable(el, data.id, 'block');
   $('canvas').appendChild(el);
