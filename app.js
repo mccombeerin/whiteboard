@@ -408,43 +408,59 @@ function renderBlock(data) {
 
   if (data.color === 'none') {
     // Plain text — transparent, resizable, font scales with size
+    // Outer el: overflow:visible so remove button shows, but we need a resize wrapper inside
     el.className = 'text-block text-plain';
     el.style.background = 'transparent';
-    el.style.border = '2px dashed rgba(0,0,0,0.18)';
+    el.style.border = 'none';
     el.style.boxShadow = 'none';
-    el.style.color = '#1a202c';
-    el.style.fontSize = '18px';
-    el.style.fontWeight = '500';
-    el.style.padding = '6px 10px';
-    el.style.minWidth = '80px';
-    el.style.minHeight = '40px';
+    el.style.padding = '0';
+    el.style.overflow = 'visible';
     el.style.width = data.w ? data.w + 'px' : '160px';
     el.style.height = data.h ? data.h + 'px' : '60px';
-    el.style.whiteSpace = 'pre-wrap';
-    el.style.lineHeight = '1.4';
-    el.style.overflow = 'visible'; // allow remove button to show outside bounds
-    el.style.resize = 'both';
-    el.style.display = 'block'; // resize:both needs block or inline-block
-    el.style.wordBreak = 'break-word';
 
-    // Scale font size as the element is resized
+    // Inner resize wrapper — this is what actually has resize:both
+    const resizeWrap = document.createElement('div');
+    resizeWrap.style.cssText = [
+      'width:100%', 'height:100%',
+      'min-width:80px', 'min-height:40px',
+      'resize:both', 'overflow:auto',
+      'border:2px dashed rgba(0,0,0,0.18)',
+      'border-radius:6px',
+      'padding:6px 10px',
+      'box-sizing:border-box',
+      'display:flex', 'align-items:center',
+      'word-break:break-word',
+      'white-space:pre-wrap',
+      'line-height:1.4',
+      'color:#1a202c',
+      'font-family:Nunito,sans-serif',
+      'font-weight:500',
+      'font-size:18px',
+    ].join(';');
+    el.appendChild(resizeWrap);
+
+    // Scale font size as inner wrapper is resized
     const resizeObserver = new ResizeObserver(() => {
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
-      // Font size scales proportionally to the smaller dimension
+      const w = resizeWrap.offsetWidth;
+      const h = resizeWrap.offsetHeight;
+      // Sync outer el size so drag logic stays accurate
+      el.style.width  = resizeWrap.offsetWidth  + 'px';
+      el.style.height = resizeWrap.offsetHeight + 'px';
       const size = Math.max(10, Math.min(Math.floor(h * 0.45), Math.floor(w * 0.18)));
-      el.style.fontSize = size + 'px';
+      resizeWrap.style.fontSize = size + 'px';
     });
-    resizeObserver.observe(el);
+    resizeObserver.observe(resizeWrap);
   } else {
     el.className = 'text-block';
     el.style.background = data.color;
   }
-  // Use rich HTML if available, else plain text
+
+  // Put rich content into the right container
+  const contentTarget = (data.color === 'none' && el.querySelector('div')) ? el.querySelector('div') : el;
   if (data.html) {
-    el.innerHTML = data.html;
+    contentTarget.innerHTML = data.html;
   } else {
-    el.textContent = data.text;
+    contentTarget.textContent = data.text;
   }
 
   const rm = document.createElement('div');
