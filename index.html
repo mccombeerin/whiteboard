@@ -403,8 +403,8 @@
   <div id="format-section">
     <div class="chip-section-label">Format</div>
     <div style="display:flex;gap:6px;margin-top:4px;">
-      <div class="fmt-btn" id="fmt-bold" title="Bold" onclick="applyFormat('bold')"><b>Bold</b></div>
-      <div class="fmt-btn" id="fmt-underline" title="Underline" onclick="applyFormat('underline')"><u>Underline</u></div>
+      <div class="fmt-btn" id="fmt-bold" title="Bold" onmousedown="event.preventDefault()" onclick="applyFormat('bold')"><b>Bold</b></div>
+      <div class="fmt-btn" id="fmt-underline" title="Underline" onmousedown="event.preventDefault()" onclick="applyFormat('underline')"><u>Underline</u></div>
     </div>
   </div>
 

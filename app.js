@@ -311,12 +311,6 @@ function buildPopup() {
     swatchRow.appendChild(sw);
   });
 
-  // Bold/underline buttons
-  const boldBtn = $('fmt-bold');
-  const ulBtn   = $('fmt-underline');
-  if (boldBtn) boldBtn.addEventListener('click', () => applyFormat('bold'));
-  if (ulBtn)   ulBtn.addEventListener('click',   () => applyFormat('underline'));
-
   $('popup-confirm').addEventListener('click', () => confirmAddBlock());
   $('popup-cancel').addEventListener('click',  () => togglePopup(false));
   if (editor) editor.addEventListener('keydown', e => {
