@@ -529,23 +529,22 @@ function renderBlock(data) {
     // Plain text block — outer el is overflow:visible for remove button
     el.className = 'text-block text-plain';
     el.style.cssText += ';background:transparent;border:none;box-shadow:none;padding:0;overflow:visible;display:block;';
-    el.style.width  = (data.w || 160) + 'px';
-    el.style.height = (data.h || 60)  + 'px';
+    el.style.width  = (data.w || 200) + 'px';
+    el.style.height = (data.h || 80)  + 'px';
 
-    // Use a textarea for native resize support
-    const ta = document.createElement('textarea');
-    ta.value = data.text || '';
-    ta.readOnly = true; // not editable once placed
+    // Use a div with contenteditable=false so rich HTML renders and text never scrolls
+    // The outer textarea approach caused overflow — instead use a div that scales font to fit
+    const ta = document.createElement('div');
     ta.style.cssText = [
       'width:100%',
       'height:100%',
       'min-width:80px',
       'min-height:40px',
       'resize:both',
-      'overflow:auto',
+      'overflow:hidden',
       'border:2px dashed rgba(0,0,0,0.25)',
       'border-radius:6px',
-      'padding:6px 10px',
+      'padding:8px 12px',
       'box-sizing:border-box',
       'background:transparent',
       'color:#1a202c',
@@ -555,25 +554,38 @@ function renderBlock(data) {
       'line-height:1.4',
       'cursor:grab',
       'outline:none',
-      'display:block',
+      'display:flex',
+      'align-items:center',
+      'flex-wrap:wrap',
+      'word-break:break-word',
+      'white-space:pre-wrap',
     ].join(';');
     el.appendChild(ta);
 
-    // Scale font and sync outer el size as textarea is resized
+    // Binary search for the largest font size that fits without overflow
+    function fitFont() {
+      let lo = 8, hi = 120, best = 8;
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        ta.style.fontSize = mid + 'px';
+        if (ta.scrollWidth <= ta.clientWidth && ta.scrollHeight <= ta.clientHeight) {
+          best = mid; lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      ta.style.fontSize = best + 'px';
+    }
+
+    // Sync outer el size and re-fit font when div is resized
     new ResizeObserver(() => {
       const w = ta.offsetWidth;
       const h = ta.offsetHeight;
-      // Sync outer el so remove button and drag bounds stay correct
       el.style.width  = w + 'px';
       el.style.height = h + 'px';
-      const size = Math.max(10, Math.min(Math.floor(h * 0.4), Math.floor(w * 0.15)));
-      ta.style.fontSize = size + 'px';
-      // Keep remove button visible by repositioning it on the outer el
+      fitFont();
       const rm = el.querySelector('.blk-remove');
-      if (rm) {
-        rm.style.top   = '-8px';
-        rm.style.right = '-8px';
-      }
+      if (rm) { rm.style.top = '-8px'; rm.style.right = '-8px'; }
     }).observe(ta);
 
   } else {
@@ -583,7 +595,24 @@ function renderBlock(data) {
 
   // Put rich content into the right container
   if (data.color === 'none') {
-    // textarea already has value set above — nothing to do here
+    // Set content into the inner resizable div
+    const inner = el.querySelector('div');
+    if (inner) {
+      if (data.html) inner.innerHTML = data.html;
+      else inner.textContent = data.text;
+      // Fit font after content is set (use rAF so layout is ready)
+      requestAnimationFrame(() => {
+        let lo = 8, hi = 120, best = 8;
+        while (lo <= hi) {
+          const mid = Math.floor((lo + hi) / 2);
+          inner.style.fontSize = mid + 'px';
+          if (inner.scrollWidth <= inner.clientWidth && inner.scrollHeight <= inner.clientHeight) {
+            best = mid; lo = mid + 1;
+          } else { hi = mid - 1; }
+        }
+        inner.style.fontSize = best + 'px';
+      });
+    }
   } else if (data.html) {
     el.innerHTML = data.html;
   } else {
@@ -695,8 +724,8 @@ function makeDraggable(el, objectId, objectType) {
         e.target.classList.contains('dz-lock')) return;
     if (objectType === 'zone' && dropZones[objectId] && dropZones[objectId].locked) return;
 
-    // If clicking on a textarea's resize handle (bottom-right 16px corner), let browser handle it
-    if (e.target.tagName === 'TEXTAREA') {
+    // If clicking on the resize handle of a free text block's inner div (bottom-right 16px)
+    if (e.target !== el && e.target.style && e.target.style.resize === 'both') {
       const rect = e.target.getBoundingClientRect();
       const inResizeCorner = (e.clientX > rect.right - 16) && (e.clientY > rect.bottom - 16);
       if (inResizeCorner) return;
