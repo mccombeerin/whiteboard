@@ -744,8 +744,8 @@ function makeDraggable(el, objectId, objectType) {
     if (!dragging) return;
     e.preventDefault();
     const canvas = $('canvas-wrap');
-    let newLeft = Math.max(0, Math.min(startLeft + (e.clientX - startX), canvas.clientWidth  - el.offsetWidth));
-    let newTop  = Math.max(0, Math.min(startTop  + (e.clientY - startY), canvas.clientHeight - el.offsetHeight));
+    let newLeft = startLeft + (e.clientX - startX) / zoomLevel;
+    let newTop  = startTop  + (e.clientY - startY) / zoomLevel;
     el.style.left = newLeft + 'px';
     el.style.top  = newTop  + 'px';
     if (objectType === 'block') highlightNearZones(newLeft, newTop, el.offsetWidth, el.offsetHeight);
