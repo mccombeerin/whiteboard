@@ -24,10 +24,12 @@ let supabaseClient = null;
 let channel        = null;
 let isTutor        = true;
 let selectedColor  = BLOCK_COLORS[0];
-let zoomLevel      = 1.0; // canvas zoom scale
-const ZOOM_MIN     = 0.3;
-const ZOOM_MAX     = 3.0;
-const ZOOM_STEP    = 0.15;
+let zoomLevel = 1.0;
+let panX      = 0;   // canvas translate X
+let panY      = 0;   // canvas translate Y
+const ZOOM_MIN  = 0.3;
+const ZOOM_MAX  = 3.0;
+const ZOOM_STEP = 0.15;
 let popupText      = '';
 let formatBold     = false;
 let formatUnderline = false;
@@ -93,17 +95,37 @@ function applyFormat(cmd) {
    CANVAS ZOOM
 ═══════════════════════════════════════════ */
 
-function setZoom(level) {
-  zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, level));
+function setZoom(newLevel, originX, originY) {
+  const wrap   = $('canvas-wrap');
   const canvas = $('canvas');
-  if (canvas) canvas.style.transform = 'scale(' + zoomLevel + ')';
+  if (!wrap || !canvas) return;
+
+  const prev    = zoomLevel;
+  zoomLevel     = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newLevel));
+
+  // Default origin: centre of canvas wrap
+  const ox = (originX !== undefined) ? originX : wrap.clientWidth  / 2;
+  const oy = (originY !== undefined) ? originY : wrap.clientHeight / 2;
+
+  // Keep the point under ox,oy fixed:
+  // point in canvas space = (ox - panX) / prev
+  // after zoom: ox = canvasPoint * zoomLevel + newPanX
+  panX = ox - ((ox - panX) / prev) * zoomLevel;
+  panY = oy - ((oy - panY) / prev) * zoomLevel;
+
+  canvas.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoomLevel + ')';
+
   const label = $('zoom-label');
   if (label) label.textContent = Math.round(zoomLevel * 100) + '%';
 }
 
-function zoomIn()  { setZoom(zoomLevel + ZOOM_STEP); }
-function zoomOut() { setZoom(zoomLevel - ZOOM_STEP); }
-function zoomReset() { setZoom(1.0); }
+function zoomReset() {
+  panX = 0; panY = 0; zoomLevel = 1.0;
+  const canvas = $('canvas');
+  if (canvas) canvas.style.transform = '';
+  const label = $('zoom-label');
+  if (label) label.textContent = '100%';
+}
 
 window.addEventListener('DOMContentLoaded', boot);
 
@@ -181,13 +203,14 @@ function initZoomGestures() {
   const wrap = $('canvas-wrap');
   if (!wrap) return;
 
-  // Scroll wheel zoom
+  // Scroll wheel = zoom toward mouse position (no Ctrl needed)
   wrap.addEventListener('wheel', e => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-      setZoom(zoomLevel + delta);
-    }
+    e.preventDefault();
+    const rect   = wrap.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? (1 + ZOOM_STEP) : (1 - ZOOM_STEP);
+    setZoom(zoomLevel * factor, mouseX, mouseY);
   }, { passive: false });
 
   // Pinch to zoom (touch)
@@ -206,7 +229,10 @@ function initZoomGestures() {
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      setZoom(zoomLevel * (dist / lastPinchDist));
+      const rect   = wrap.getBoundingClientRect();
+      const midX   = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+      const midY   = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+      setZoom(zoomLevel * (dist / lastPinchDist), midX, midY);
       lastPinchDist = dist;
     }
   }, { passive: true });
@@ -250,33 +276,33 @@ function buildToolbar() {
   zoomWrap.className = 'zoom-control';
   zoomWrap.style.marginLeft = 'auto';
 
-  const zoomOut = document.createElement('button');
-  zoomOut.className = 'zoom-btn';
-  zoomOut.textContent = '−';
-  zoomOut.title = 'Zoom out';
-  zoomOut.addEventListener('click', () => { zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP); setZoom(zoomLevel); });
+  const zoomOutBtn = document.createElement('button');
+  zoomOutBtn.className = 'zoom-btn';
+  zoomOutBtn.textContent = '−';
+  zoomOutBtn.title = 'Zoom out';
+  zoomOutBtn.addEventListener('click', () => setZoom(zoomLevel - ZOOM_STEP)); // centres
 
   const zoomLabelEl = document.createElement('div');
   zoomLabelEl.className = 'zoom-label';
   zoomLabelEl.id = 'zoom-label';
   zoomLabelEl.textContent = '100%';
 
-  const zoomIn = document.createElement('button');
-  zoomIn.className = 'zoom-btn';
-  zoomIn.textContent = '+';
-  zoomIn.title = 'Zoom in';
-  zoomIn.addEventListener('click', () => { zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP); setZoom(zoomLevel); });
+  const zoomInBtn = document.createElement('button');
+  zoomInBtn.className = 'zoom-btn';
+  zoomInBtn.textContent = '+';
+  zoomInBtn.title = 'Zoom in';
+  zoomInBtn.addEventListener('click', () => setZoom(zoomLevel + ZOOM_STEP)); // centres
 
   const zoomResetBtn = document.createElement('button');
   zoomResetBtn.className = 'zoom-btn';
   zoomResetBtn.textContent = '⊙';
   zoomResetBtn.title = 'Reset zoom';
   zoomResetBtn.style.fontSize = '13px';
-  zoomResetBtn.addEventListener('click', () => setZoom(1.0));
+  zoomResetBtn.addEventListener('click', () => zoomReset());
 
-  zoomWrap.appendChild(zoomOut);
+  zoomWrap.appendChild(zoomOutBtn);
   zoomWrap.appendChild(zoomLabelEl);
-  zoomWrap.appendChild(zoomIn);
+  zoomWrap.appendChild(zoomInBtn);
   zoomWrap.appendChild(zoomResetBtn);
   tb.appendChild(zoomWrap);
 
