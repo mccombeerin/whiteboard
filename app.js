@@ -127,9 +127,42 @@ function zoomReset() {
   if (label) label.textContent = '100%';
 }
 
+/* ═══════════════════════════════════════════
+   AGE GATE
+═══════════════════════════════════════════ */
+
+function acceptAgeGate() {
+  // Store acceptance in sessionStorage so it doesn't re-appear on refresh
+  sessionStorage.setItem('age_accepted', '1');
+  const gate = document.getElementById('age-gate');
+  if (gate) {
+    gate.style.opacity = '0';
+    gate.style.transition = 'opacity 0.3s';
+    setTimeout(() => gate.style.display = 'none', 300);
+  }
+}
+
 window.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
+  // Check if age gate already accepted this session
+  if (!sessionStorage.getItem('age_accepted')) {
+    // Show age gate — boot continues after user accepts
+    const gate = document.getElementById('age-gate');
+    if (gate) gate.style.display = 'flex';
+    // Wait for acceptance before booting
+    await new Promise(resolve => {
+      const btn = document.getElementById('ag-continue');
+      if (btn) {
+        const orig = btn.onclick;
+        btn.onclick = () => { orig && orig(); resolve(); };
+      } else resolve();
+    });
+  } else {
+    const gate = document.getElementById('age-gate');
+    if (gate) gate.style.display = 'none';
+  }
+
   isTutor = true;
   showApp();
 
