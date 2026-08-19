@@ -145,23 +145,17 @@ function acceptAgeGate() {
 window.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
-  // Check if age gate already accepted this session
-  if (!sessionStorage.getItem('age_accepted')) {
-    // Show age gate — boot continues after user accepts
-    const gate = document.getElementById('age-gate');
-    if (gate) gate.style.display = 'flex';
-    // Wait for acceptance before booting
-    await new Promise(resolve => {
-      const btn = document.getElementById('ag-continue');
-      if (btn) {
-        const orig = btn.onclick;
-        btn.onclick = () => { orig && orig(); resolve(); };
-      } else resolve();
-    });
-  } else {
-    const gate = document.getElementById('age-gate');
-    if (gate) gate.style.display = 'none';
-  }
+  // Always show age gate on load — user must confirm each session
+  const gate = document.getElementById('age-gate');
+  if (gate) gate.style.display = 'flex';
+  // Wait for acceptance before booting
+  await new Promise(resolve => {
+    const btn = document.getElementById('ag-continue');
+    if (btn) {
+      const orig = btn.onclick;
+      btn.onclick = () => { orig && orig(); resolve(); };
+    } else resolve();
+  });
 
   isTutor = true;
   showApp();
